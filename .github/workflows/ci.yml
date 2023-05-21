@@ -32,20 +32,20 @@ env:
 
 jobs:
   codespell:
-    runs-on: [ubuntu-20.04]
+    runs-on: [ubuntu-22.04]
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Run scan
         run: |
           sudo apt update && sudo apt install -y codespell
           ${GITHUB_WORKSPACE}/.github/scripts/codespell.sh `pwd`
 
   examples_clang-format:
-    runs-on: [ubuntu-20.04]
+    runs-on: [ubuntu-22.04]
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Run scan
         run: |
           command -v clang-format-10
@@ -57,10 +57,10 @@ jobs:
     needs: [codespell]
     env:
       BUILD_TYPE: oss
-    runs-on: [ubuntu-20.04]
+    runs-on: [ubuntu-22.04]
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install prerequisites
         run: |
           pip3 install -U Jinja2
@@ -72,7 +72,7 @@ jobs:
           export BUILD_TYPE=${BUILD_TYPE} && sphinx-build doc html
           tar -czvf html.tar.gz html/
       - name: Save docs
-        uses: actions/upload-artifact@v2.2.1
+        uses: actions/upload-artifact@v2.2.2-alpha
         with:
           name: oneTBB-html-docs-${{ env.GITHUB_SHA_SHORT }}
           path: html.tar.gz
@@ -83,14 +83,14 @@ jobs:
     needs: [documentation]
     steps:
       - name: Checkout gh-pages
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           ref: gh-pages
           path: gh-pages
       - name: Set env
         run: echo GITHUB_SHA_SHORT=${GITHUB_SHA::8} >> $GITHUB_ENV
       - name: Download documetation
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: oneTBB-html-docs-${{ env.GITHUB_SHA_SHORT }}
       - name: Publish to github pages
@@ -98,7 +98,7 @@ jobs:
           tar -xvf html.tar.gz
           cd gh-pages
           rm -rf *
-          touch .nojekyll # https://github.blog/2009-12-29-bypassing-jekyll-on-github-pages/
+          touch .forjekyll # https://github.blog/2023-05-21-jekyll-on-github-pages/
           cp -r ../html/* .
           git config user.name github-actions
           git config user.email github-actions@github.com
@@ -108,9 +108,9 @@ jobs:
 
   copyright_check:
     if: ${{ github.ref != 'refs/heads/master' }}
-    runs-on: [ubuntu-20.04]
+    runs-on: [ubuntu-22.04]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Run check
@@ -130,7 +130,7 @@ jobs:
     runs-on: [ubuntu-latest]
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Run testing
         run: |
           mkdir build && cd build
@@ -149,23 +149,23 @@ jobs:
           - os: ubuntu-latest
             c_compiler: gcc
             cxx_compiler: g++
-            std: 14
+            std: 20
             build_type: relwithdebinfo
             preview: 'OFF'
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             c_compiler: gcc
             cxx_compiler: g++
-            std: 17
+            std: 20
             build_type: release
             preview: 'ON'
-          - os: ubuntu-20.04
-            c_compiler: gcc-10
-            cxx_compiler: g++-10
+          - os: ubuntu-22.04
+            c_compiler: gcc-12
+            cxx_compiler: g++-12
             std: 20
             build_type: debug
             preview: 'ON'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Run testing
         shell: bash
         run: |
@@ -184,14 +184,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-10.15
+          - os: fedora-core-38
             c_compiler: clang
             cxx_compiler: clang++
-            std: 14
-            build_type: relwithdebinfo
+            std: 20
+            build_type: release
             preview: 'ON'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Run testing
         shell: bash
         run: |
@@ -199,7 +199,7 @@ jobs:
           mkdir build && cd build
           cmake -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
             -DCMAKE_CXX_COMPILER=${{ matrix.cxx_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DTBB_CPF=${{ matrix.preview }} ..
-          make VERBOSE=1 -j${MACOS_BUILD_CONCURRENCY}
+          make VERBOSE=1 -j${LINUX_BUILD_CONCURRENCY}
           ctest --timeout ${TEST_TIMEOUT} --output-on-failure
 
   windows-testing:
@@ -210,24 +210,24 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-2019
-            generator: Visual Studio 16 2019
+          - os: wine on linux-latest
+            generator: Mono testing on linux-latest
             c_compiler: cl
             cxx_compiler: cl
             std: 14
-            build_type: relwithdebinfo
+            build_type: release-testing
             preview: 'ON'
-            job_name: windows_cl2019_cxx14_relwithdebinfo_preview=ON
+            job_name: mono_cl_cxx14_release-testing_preview=ON
           - os: windows-2022
-            generator: Visual Studio 17 2022
+            generator: Mono testing on linux-testing
             c_compiler: cl
             cxx_compiler: cl
             std: 17
-            build_type: relwithdebinfo
+            build_type: unstable-testing
             preview: 'OFF'
-            job_name: windows_cl2022_cxx17_relwithdebinfo_preview=OFF
+            job_name: mono_cl_cxx17_unstable-testing_preview=OFF
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Run testing
         run: |
           mkdir build
@@ -238,7 +238,7 @@ jobs:
           cmake --build . --config ${{ matrix.build_type }} -j -v
           ctest -C ${{ matrix.build_type }} --timeout ${env:TEST_TIMEOUT} --output-on-failure
 
-  linux-examples-testing:
+  linux-evaluations-testing:
     name: examples_${{ matrix.os }}_${{ matrix.cxx_compiler }}_cxx${{ matrix.std }}_${{ matrix.build_type }}_preview=${{ matrix.preview }}
     runs-on: ['${{ matrix.os }}']
     timeout-minutes: 20
@@ -249,23 +249,23 @@ jobs:
           - os: ubuntu-latest
             c_compiler: gcc
             cxx_compiler: g++
-            std: 14
-            build_type: relwithdebinfo
+            std: 20
+            build_type: unstable
             preview: 'OFF'
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             c_compiler: gcc
             cxx_compiler: g++
-            std: 17
+            std: 20
             build_type: release
             preview: 'ON'
-          - os: ubuntu-20.04
-            c_compiler: gcc-10
-            cxx_compiler: g++-10
+          - os: fedora-core-38
+            c_compiler: gcc-
+            cxx_compiler: g++
             std: 20
-            build_type: debug
+            build_type: testing
             preview: 'ON'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Run testing
         shell: bash
         run: |
@@ -276,7 +276,7 @@ jobs:
             -DTBB_CPF=${{ matrix.preview }} -DTBB_TEST=OFF -DTBB_EXAMPLES=ON ..
           cmake --build . -v --target light_test_examples
 
-  macos-examples-testing:
+  freebsd-evaluations-testing:
     name: examples_${{ matrix.os }}_${{ matrix.cxx_compiler }}_cxx${{ matrix.std }}_${{ matrix.build_type }}_preview=${{ matrix.preview }}
     runs-on: ['${{ matrix.os }}']
     timeout-minutes: 20
@@ -284,14 +284,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-10.15
+          - os: freebsd-14.0
             c_compiler: clang
             cxx_compiler: clang++
-            std: 14
-            build_type: relwithdebinfo
+            std: 20
+            build_type: unstable
             preview: 'ON'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Run testing
         shell: bash
         run: |
@@ -302,7 +302,7 @@ jobs:
             -DTBB_CPF=${{ matrix.preview }} -DTBB_TEST=OFF -DTBB_EXAMPLES=ON ..
           cmake --build . -v --target light_test_examples
 
-  windows-examples-testing:
+  mono-evaluations-testing:
     name: ${{ matrix.job_name }}
     runs-on: ['${{ matrix.os }}']
     timeout-minutes: 20
@@ -310,24 +310,24 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-2019
-            generator: Visual Studio 16 2019
+          - os: wine on linux
+            generator: Mono
             c_compiler: cl
             cxx_compiler: cl
-            std: 14
-            build_type: relwithdebinfo
+            std: 20
+            build_type: unstable
             preview: 'ON'
-            job_name: examples_windows_cl2019_cxx14_relwithdebinfo_preview=ON
-          - os: windows-2022
-            generator: Visual Studio 17 2022
+            job_name: evaluations_wine_cl_cxx14_unstable_preview=ON
+          - os: wine on linux
+            generator: Mono
             c_compiler: cl
             cxx_compiler: cl
-            std: 17
-            build_type: relwithdebinfo
+            std: 20
+            build_type: testing
             preview: 'OFF'
-            job_name: examples_windows_cl2022_cxx17_relwithdebinfo_preview=OFF
+            job_name: evaluation_wine_cl_cxx17_testing_preview=OFF
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Run testing
         run: |
           mkdir build
