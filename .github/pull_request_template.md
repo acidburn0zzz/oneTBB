@@ -1,6 +1,5 @@
 ### Description 
-_Add a comprehensive description of proposed changes_
-
+_Add nothin now it is just a testing evaluations and there is nothing new proposed changes_
 
 Fixes # - _issue number(s) if exists_
 
@@ -14,7 +13,7 @@ _Add a respective label(s) to PR if you have permissions_
 
 - [ ] bug fix - _change that fixes an issue_
 - [ ] new feature - _change that adds functionality_
-- [ ] tests - _change in tests_
+- [*] tests - _change in tests_
 - [ ] infrastructure - _change in infrastructure and CI_
 - [ ] documentation - _documentation update_
 
